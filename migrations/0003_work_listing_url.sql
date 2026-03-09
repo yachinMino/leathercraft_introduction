@@ -1,0 +1,2 @@
+ALTER TABLE works
+ADD COLUMN listing_url TEXT NOT NULL DEFAULT '';
