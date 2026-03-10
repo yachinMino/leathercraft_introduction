@@ -14,8 +14,8 @@
 		{
 			"binding": "DB",
 			"database_name": "leathercraft-db",
-			"database_id": "00000000-0000-0000-0000-000000000000",
-			"preview_database_id": "00000000-0000-0000-0000-000000000000"
+			"database_id": "8e287d0c-6abb-4193-87ac-2e58ab4367d0",
+			"preview_database_id": "8e287d0c-6abb-4193-87ac-2e58ab4367d0"
 		}
 	],
 	"r2_buckets": [
