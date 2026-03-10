@@ -10,6 +10,7 @@ import type {
   WorkCard,
   WorkDetail,
   WorkInput,
+  WorkListResponse,
 } from '../shared/types'
 
 interface MasterRow {
@@ -110,6 +111,16 @@ function rowToStoredWorkImage(row: WorkImageRow): StoredWorkImage {
     contentType: row.content_type,
     sortOrder: Number(row.sort_order),
   }
+}
+
+async function hydrateWorkCards(
+  database: D1Database,
+  workRows: readonly WorkSummaryRow[],
+): Promise<WorkCard[]> {
+  const workIds = workRows.map((row) => Number(row.id))
+  const edgeFinishesByWork = await listEdgeFinishesByWork(database, workIds)
+
+  return workRows.map((row) => rowToWorkCard(row, edgeFinishesByWork.get(Number(row.id)) ?? []))
 }
 
 async function listEdgeFinishesByWork(
@@ -216,11 +227,70 @@ export async function listWorks(database: D1Database): Promise<WorkCard[]> {
     )
     .all<WorkSummaryRow>()
 
-  const workRows = results ?? []
-  const workIds = workRows.map((row) => Number(row.id))
-  const edgeFinishesByWork = await listEdgeFinishesByWork(database, workIds)
+  return hydrateWorkCards(database, results ?? [])
+}
 
-  return workRows.map((row) => rowToWorkCard(row, edgeFinishesByWork.get(Number(row.id)) ?? []))
+export async function listWorksPage(
+  database: D1Database,
+  page: number,
+  pageSize: number,
+): Promise<WorkListResponse> {
+  const totalRow = await database
+    .prepare(
+      `SELECT COUNT(*) AS total_count
+       FROM works`,
+    )
+    .first<{ total_count: number }>()
+
+  const totalCount = Number(totalRow?.total_count ?? 0)
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const normalizedPage = Math.min(Math.max(page, 1), totalPages)
+  const offset = (normalizedPage - 1) * pageSize
+
+  const { results } = await database
+    .prepare(
+      `SELECT
+         w.id,
+         w.title,
+         w.leather_color,
+         w.grain,
+         w.thread_color,
+         w.tanning_method,
+         w.listing_url,
+         w.notes,
+         w.created_at,
+         w.updated_at,
+         (
+           SELECT wi.image_key
+           FROM work_images wi
+           WHERE wi.work_id = w.id
+           ORDER BY wi.sort_order ASC, wi.id ASC
+           LIMIT 1
+         ) AS cover_image_key,
+         (
+           SELECT COUNT(*)
+           FROM work_reactions wr
+           WHERE wr.work_id = w.id AND wr.reaction_type = 'like'
+         ) AS like_count,
+         (
+           SELECT COUNT(*)
+           FROM work_reactions wr
+           WHERE wr.work_id = w.id AND wr.reaction_type = 'request'
+         ) AS request_count
+       FROM works w
+       ORDER BY w.updated_at DESC, w.id DESC
+       LIMIT ? OFFSET ?`,
+    )
+    .bind(pageSize, offset)
+    .all<WorkSummaryRow>()
+
+  return {
+    works: await hydrateWorkCards(database, results ?? []),
+    page: normalizedPage,
+    pageSize,
+    totalCount,
+    totalPages,
+  }
 }
 
 export async function getWorkDetail(

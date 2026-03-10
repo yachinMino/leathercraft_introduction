@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { ZodError } from 'zod'
 
-import { maxImagesPerWork } from '../shared/constants'
+import { maxImagesPerWork, publicWorksPageSize } from '../shared/constants'
 import { createEmptyViewerReactions } from '../shared/types'
 import type { WorkDetail } from '../shared/types'
 import {
@@ -25,6 +25,7 @@ import {
   insertWorkImage,
   listWorkImages,
   listWorks,
+  listWorksPage,
   removeWorkImages,
   replaceMasterCatalog,
   replaceWorkEdgeFinishes,
@@ -72,6 +73,22 @@ function parseWorkId(value: string): number {
   }
 
   return workId
+}
+
+function parsePage(value?: string): number {
+  if (!value) {
+    return 1
+  }
+
+  const page = Number(value)
+
+  if (!Number.isInteger(page) || page <= 0) {
+    throw new HTTPException(400, {
+      message: 'page は 1 以上の整数で指定してください。',
+    })
+  }
+
+  return page
 }
 
 function getFileExtension(file: File): string {
@@ -201,7 +218,8 @@ app.onError((error, context) => {
 })
 
 app.get('/api/works', async (context) => {
-  return context.json(await listWorks(context.env.DB))
+  const page = parsePage(context.req.query('page'))
+  return context.json(await listWorksPage(context.env.DB, page, publicWorksPageSize))
 })
 
 app.get('/api/works/:id', async (context) => {

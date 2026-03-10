@@ -1,6 +1,7 @@
 export const maxImagesPerWork = 4
 export const maxImageSizeBytes = 5 * 1024 * 1024
 export const adminPasswordMaxLength = 50
+export const publicWorksPageSize = 9
 export const allowedUploadImageTypes = ['image/jpeg', 'image/png', 'image/webp'] as const
 
 export const masterCategoryOrder = [

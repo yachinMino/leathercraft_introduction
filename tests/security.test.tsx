@@ -6,8 +6,9 @@ import {
   adminPasswordMaxLength,
   maxImageSizeBytes,
   maxImagesPerWork,
+  publicWorksPageSize,
 } from '../shared/constants'
-import type { WorkCard } from '../shared/types'
+import type { WorkCard, WorkListResponse } from '../shared/types'
 import { WorkCardList } from '../src/App'
 import app from '../worker/index'
 import { createTestBindings, testAdminPassword } from './test-env'
@@ -155,12 +156,49 @@ describe('security tests', () => {
     expect(createdWork.listingUrl).toBe('https://jp.mercari.com/item/m00000000000')
 
     const listResponse = await requestApp('/api/works', {}, env)
-    const works = (await listResponse.json()) as Array<{ listingUrl: string; title: string }>
+    const workList = (await listResponse.json()) as WorkListResponse
 
     expect(listResponse.status).toBe(200)
-    expect(works).toHaveLength(1)
-    expect(works[0]?.title).toBe(payload)
-    expect(works[0]?.listingUrl).toBe('https://jp.mercari.com/item/m00000000000')
+    expect(workList.works).toHaveLength(1)
+    expect(workList.works[0]?.title).toBe(payload)
+    expect(workList.works[0]?.listingUrl).toBe('https://jp.mercari.com/item/m00000000000')
+  })
+
+  it('returns paginated public work list responses', async () => {
+    const env = createTestBindings()
+    const loginResponse = await loginAsAdmin(env)
+    const cookie = getCookieHeader(loginResponse)
+
+    for (let index = 0; index < publicWorksPageSize + 2; index += 1) {
+      const createResponse = await requestApp(
+        '/api/admin/works',
+        {
+          method: 'POST',
+          headers: createAdminRequestHeaders(cookie),
+          body: createWorkForm({
+            title: `作品 ${index + 1}`,
+          }),
+        },
+        env,
+      )
+
+      expect(createResponse.status).toBe(201)
+    }
+
+    const pageTwoResponse = await requestApp('/api/works?page=2', {}, env)
+    const pageTwo = (await pageTwoResponse.json()) as WorkListResponse
+
+    expect(pageTwoResponse.status).toBe(200)
+    expect(pageTwo.page).toBe(2)
+    expect(pageTwo.pageSize).toBe(publicWorksPageSize)
+    expect(pageTwo.totalCount).toBe(publicWorksPageSize + 2)
+    expect(pageTwo.totalPages).toBe(2)
+    expect(pageTwo.works).toHaveLength(2)
+
+    const clampedResponse = await requestApp('/api/works?page=999', {}, env)
+    const clamped = (await clampedResponse.json()) as WorkListResponse
+
+    expect(clamped.page).toBe(2)
   })
 
   it('escapes XSS payloads when rendering work cards', () => {

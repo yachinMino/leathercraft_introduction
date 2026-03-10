@@ -3,8 +3,8 @@ import type {
   AdminSessionResponse,
   MasterCatalog,
   ReactionResponse,
-  WorkCard,
   WorkDetail,
+  WorkListResponse,
 } from '../shared/types'
 
 export class ApiError extends Error {
@@ -27,8 +27,8 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export const api = {
-  listWorks() {
-    return fetch('/api/works').then((response) => readJson<WorkCard[]>(response))
+  listWorks(page = 1) {
+    return fetch(`/api/works?page=${page}`).then((response) => readJson<WorkListResponse>(response))
   },
   getWork(workId: number) {
     return fetch(`/api/works/${workId}`).then((response) => readJson<WorkDetail>(response))

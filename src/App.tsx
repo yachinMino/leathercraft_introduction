@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from 'react-router-dom'
+import { BrowserRouter, Link, NavLink, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 
 import { ApiError, api } from './api'
 import {
@@ -18,6 +18,7 @@ import type {
   ReactionType,
   WorkCard,
   WorkDetail,
+  WorkListResponse,
 } from '../shared/types'
 
 function formatDate(value: string): string {
@@ -85,6 +86,44 @@ function createWorkDraft(masters: MasterCatalog, work: WorkDetail | null) {
     notes: work?.notes ?? '',
     edgeFinishes: work?.edgeFinishes ?? [],
   }
+}
+
+type PaginationItem = number | 'start-ellipsis' | 'end-ellipsis'
+
+function parsePageParam(value: string | null): number {
+  const page = Number(value)
+
+  if (!Number.isInteger(page) || page <= 0) {
+    return 1
+  }
+
+  return page
+}
+
+function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const items: PaginationItem[] = [1]
+  const startPage = Math.max(2, currentPage - 1)
+  const endPage = Math.min(totalPages - 1, currentPage + 1)
+
+  if (startPage > 2) {
+    items.push('start-ellipsis')
+  }
+
+  for (let page = startPage; page <= endPage; page += 1) {
+    items.push(page)
+  }
+
+  if (endPage < totalPages - 1) {
+    items.push('end-ellipsis')
+  }
+
+  items.push(totalPages)
+
+  return items
 }
 
 interface AppShellProps {
@@ -183,6 +222,36 @@ function AboutPage() {
           </a>
           ）
         </p>
+        <ul className="about-list">
+          <li>
+            ブログ：
+            <a
+              className="text-link"
+              href="https://rakyooooo.hatenablog.com/"
+              rel="noreferrer"
+              target="_blank"
+            >
+              https://rakyooooo.hatenablog.com/
+            </a>
+          </li>
+          <li>
+            X：
+            <a
+              className="text-link"
+              href="https://x.com/yukichika_co"
+              rel="noreferrer"
+              target="_blank"
+            >
+              https://x.com/yukichika_co
+            </a>
+          </li>
+          <li>
+            メール：
+            <a className="text-link" href="mailto:yukichika_co@yahoo.co.jp">
+              yukichika_co@yahoo.co.jp
+            </a>
+          </li>
+        </ul>
       </section>
     </div>
   )
@@ -235,21 +304,119 @@ export function WorkCardList({ works }: { works: WorkCard[] }) {
   )
 }
 
+function PaginationNav({
+  page,
+  totalCount,
+  totalPages,
+  onPageChange,
+}: {
+  page: number
+  totalCount: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}) {
+  const items = buildPaginationItems(page, totalPages)
+
+  return (
+    <nav aria-label="作品一覧のページ送り" className="pagination">
+      <p className="pagination__summary">
+        {totalCount} 件中 {page} / {totalPages} ページ
+      </p>
+      <div className="pagination__controls">
+        <button
+          className="pagination__button pagination__button--nav"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          type="button"
+        >
+          前へ
+        </button>
+        <div className="pagination__list">
+          {items.map((item) =>
+            typeof item === 'number' ? (
+              <button
+                aria-current={item === page ? 'page' : undefined}
+                className={`pagination__button ${item === page ? 'is-active' : ''}`}
+                key={item}
+                onClick={() => onPageChange(item)}
+                type="button"
+              >
+                {item}
+              </button>
+            ) : (
+              <span className="pagination__ellipsis" key={item}>
+                …
+              </span>
+            ),
+          )}
+        </div>
+        <button
+          className="pagination__button pagination__button--nav"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          type="button"
+        >
+          次へ
+        </button>
+      </div>
+    </nav>
+  )
+}
+
 function HomePage() {
-  const [works, setWorks] = useState<WorkCard[]>([])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [workList, setWorkList] = useState<WorkListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const currentPage = parsePageParam(searchParams.get('page'))
+  const rawPage = searchParams.get('page')
+
+  function setPage(nextPage: number, replace = false) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+
+        if (nextPage <= 1) {
+          next.delete('page')
+        } else {
+          next.set('page', String(nextPage))
+        }
+
+        return next
+      },
+      { replace },
+    )
+  }
 
   useEffect(() => {
     let cancelled = false
 
+    setLoading(true)
+
     async function loadWorks() {
       try {
-        const nextWorks = await api.listWorks()
+        const nextWorkList = await api.listWorks(currentPage)
 
         if (!cancelled) {
-          setWorks(nextWorks)
+          setWorkList(nextWorkList)
           setError(null)
+
+          if (rawPage !== null && String(nextWorkList.page) !== rawPage) {
+            setSearchParams(
+              (current) => {
+                const next = new URLSearchParams(current)
+
+                if (nextWorkList.page <= 1) {
+                  next.delete('page')
+                } else {
+                  next.set('page', String(nextWorkList.page))
+                }
+
+                return next
+              },
+              { replace: true },
+            )
+          }
         }
       } catch (nextError) {
         if (!cancelled) {
@@ -267,13 +434,24 @@ function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [currentPage, rawPage, setSearchParams])
 
   return (
     <div className="page-stack">
       {loading ? <LoadingBlock label="作品一覧を読み込んでいます。" /> : null}
       {error ? <ErrorBlock message={error} /> : null}
-      {!loading && !error ? <WorkCardList works={works} /> : null}
+      {!loading && !error && workList ? <WorkCardList works={workList.works} /> : null}
+      {!loading && !error && workList && workList.totalPages > 1 ? (
+        <PaginationNav
+          onPageChange={(page) => {
+            setPage(page)
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          page={workList.page}
+          totalCount={workList.totalCount}
+          totalPages={workList.totalPages}
+        />
+      ) : null}
     </div>
   )
 }

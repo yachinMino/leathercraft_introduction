@@ -46,6 +46,14 @@ export interface WorkDetail extends WorkCard {
   viewerReactions: ViewerReactions
 }
 
+export interface WorkListResponse {
+  works: WorkCard[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
 export interface AdminSessionResponse {
   authenticated: boolean
 }
