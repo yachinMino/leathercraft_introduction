@@ -9,6 +9,7 @@
 - [シーケンス図](./05-sequence-diagram.md)
 - [インフラ構成](./06-infrastructure.md)
 - [バリデーション](./07-validation.md)
+- [アプリケーションデプロイ手順](./08-deployment.md)
 
 ## 対象システム
 
