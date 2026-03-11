@@ -385,6 +385,25 @@ textarea:focus {
   color: var(--ink-soft);
 }
 
+.detail-hero__actions {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: end;
+}
+
+.detail-hero__edit-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.75rem 1.1rem;
+  border-radius: 999px;
+  color: #fffaf3;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  box-shadow: 0 12px 22px rgba(111, 56, 20, 0.2);
+}
+
 .text-link {
   color: var(--accent-strong);
   font-weight: 700;
@@ -540,8 +559,12 @@ textarea:focus {
 
 .tab-strip {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
+}
+
+.tab-strip button:last-child {
+  grid-column: 1 / -1;
 }
 
 .tab-strip button,
@@ -742,6 +765,10 @@ textarea:focus {
   .image-editor__header {
     align-items: start;
     flex-direction: column;
+  }
+
+  .detail-hero__actions {
+    justify-items: start;
   }
 }
 

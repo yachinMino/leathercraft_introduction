@@ -90,6 +90,8 @@ function createWorkDraft(masters: MasterCatalog, work: WorkDetail | null) {
 
 type PaginationItem = number | 'start-ellipsis' | 'end-ellipsis'
 
+type AdminPanel = 'create' | 'edit' | 'masters'
+
 function parsePageParam(value: string | null): number {
   const page = Number(value)
 
@@ -98,6 +100,24 @@ function parsePageParam(value: string | null): number {
   }
 
   return page
+}
+
+function parseWorkIdParam(value: string | null): number | null {
+  const workId = Number(value)
+
+  if (!Number.isInteger(workId) || workId <= 0) {
+    return null
+  }
+
+  return workId
+}
+
+function parseAdminPanelParam(value: string | null): AdminPanel {
+  if (value === 'edit' || value === 'masters') {
+    return value
+  }
+
+  return 'create'
 }
 
 function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
@@ -456,7 +476,7 @@ function HomePage() {
   )
 }
 
-function WorkDetailPage() {
+function WorkDetailPage({ adminAuthenticated }: { adminAuthenticated: boolean }) {
   const params = useParams()
   const [work, setWork] = useState<WorkDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -542,9 +562,16 @@ function WorkDetailPage() {
           <h1>{work.title}</h1>
           <p>更新日: {formatDate(work.updatedAt)}</p>
         </div>
-        <Link className="text-link" to="/">
+        <div className="detail-hero__actions">
+          {adminAuthenticated ? (
+            <Link className="detail-hero__edit-link" to={`/admin?panel=edit&workId=${work.id}`}>
+              編集
+            </Link>
+          ) : null}
+          <Link className="text-link" to="/">
           一覧へ戻る
         </Link>
+        </div>
       </section>
 
       <section className="detail-grid">
@@ -993,10 +1020,13 @@ interface AdminPageProps {
 }
 
 function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedPanel = parseAdminPanelParam(searchParams.get('panel'))
+  const requestedWorkId = requestedPanel === 'edit' ? parseWorkIdParam(searchParams.get('workId')) : null
   const [password, setPassword] = useState('')
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null)
   const [selectedWork, setSelectedWork] = useState<WorkDetail | null>(null)
-  const [activePanel, setActivePanel] = useState<'works' | 'masters'>('works')
+  const [activePanel, setActivePanel] = useState<AdminPanel>(requestedPanel)
   const [loadingWork, setLoadingWork] = useState(false)
   const [workBusy, setWorkBusy] = useState(false)
   const [deleteBusy, setDeleteBusy] = useState(false)
@@ -1016,6 +1046,31 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
 
     setError(getErrorMessage(nextError))
   }, [onAuthChange])
+
+  function syncAdminRoute(panel: AdminPanel, workId?: number | null, replace = false) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+
+        if (panel === 'create') {
+          next.delete('panel')
+          next.delete('workId')
+          return next
+        }
+
+        next.set('panel', panel)
+
+        if (panel === 'edit' && workId) {
+          next.set('workId', String(workId))
+        } else {
+          next.delete('workId')
+        }
+
+        return next
+      },
+      { replace },
+    )
+  }
 
   async function loadOverview(selectedId?: number | null) {
     const nextOverview = await api.getAdminOverview()
@@ -1053,7 +1108,7 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
 
     async function bootstrapAdminData() {
       try {
-        await loadOverview()
+        await loadOverview(requestedPanel === 'edit' ? requestedWorkId : null)
       } catch (nextError) {
         if (!cancelled) {
           handleAdminError(nextError)
@@ -1066,7 +1121,7 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
     return () => {
       cancelled = true
     }
-  }, [adminAuthenticated, authReady, handleAdminError, overview])
+  }, [adminAuthenticated, authReady, handleAdminError, overview, requestedPanel, requestedWorkId])
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1083,7 +1138,7 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
     }
 
     try {
-      await loadOverview()
+      await loadOverview(requestedPanel === 'edit' ? requestedWorkId : null)
     } catch (nextError) {
       handleAdminError(nextError)
     }
@@ -1096,7 +1151,8 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
     try {
       const work = await api.getAdminWork(workId)
       setSelectedWork(work)
-      setActivePanel('works')
+      setActivePanel('edit')
+      syncAdminRoute('edit', workId)
       setEditorRevision((current) => current + 1)
     } catch (nextError) {
       handleAdminError(nextError)
@@ -1119,10 +1175,13 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
       if (editingWork) {
         await loadOverview(savedWork.id)
         setSelectedWork(savedWork)
+        setActivePanel('edit')
+        syncAdminRoute('edit', savedWork.id, true)
       } else {
         await loadOverview()
         setSelectedWork(null)
-        setActivePanel('works')
+        setActivePanel('create')
+        syncAdminRoute('create', null, true)
       }
 
       setEditorRevision((current) => current + 1)
@@ -1147,6 +1206,8 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
       await api.deleteWork(workId)
       await loadOverview()
       setSelectedWork(null)
+      setActivePanel('edit')
+      syncAdminRoute('edit', null, true)
       setEditorRevision((current) => current + 1)
       setNotice('作品を削除しました。')
     } catch (nextError) {
@@ -1219,10 +1280,11 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
 
         <div className="tab-strip">
           <button
-            className={activePanel === 'works' ? 'is-active' : ''}
+            className={activePanel === 'create' ? 'is-active' : ''}
             onClick={() => {
               setSelectedWork(null)
-              setActivePanel('works')
+              setActivePanel('create')
+              syncAdminRoute('create')
               setEditorRevision((current) => current + 1)
               setNotice(null)
             }}
@@ -1231,15 +1293,31 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
             作品登録
           </button>
           <button
+            className={activePanel === 'edit' ? 'is-active' : ''}
+            onClick={() => {
+              setActivePanel('edit')
+              syncAdminRoute('edit', selectedWork?.id ?? null)
+              setNotice(null)
+            }}
+            type="button"
+          >
+            作品編集
+          </button>
+          <button
             className={activePanel === 'masters' ? 'is-active' : ''}
-            onClick={() => setActivePanel('masters')}
+            onClick={() => {
+              setActivePanel('masters')
+              syncAdminRoute('masters')
+              setNotice(null)
+            }}
             type="button"
           >
             マスタ編集
           </button>
         </div>
 
-        <div className="admin-sidebar__list">
+        {activePanel === 'edit' ? (
+          <div className="admin-sidebar__list">
           {overview.works.length === 0 ? (
             <p className="admin-sidebar__empty">作品はまだありません。</p>
           ) : (
@@ -1258,7 +1336,8 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
               </button>
             ))
           )}
-        </div>
+          </div>
+        ) : null}
       </aside>
 
       <div className="admin-content">
@@ -1266,7 +1345,18 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
         {error ? <ErrorBlock message={error} /> : null}
         {notice ? <p className="status-text">{notice}</p> : null}
 
-        {activePanel === 'works' ? (
+        {activePanel === 'masters' ? (
+          <MasterEditor busy={masterBusy} masters={overview.masters} onSave={handleSaveMasters} />
+        ) : activePanel === 'edit' && !selectedWork ? (
+          <EmptyBlock
+            body={
+              overview.works.length === 0
+                ? 'まずは「作品登録」から新しい作品を追加してください。'
+                : '作品編集の一覧から作品を選ぶと、内容を編集できます。'
+            }
+            title={overview.works.length === 0 ? '登録済み作品はありません' : '編集する作品を選択してください'}
+          />
+        ) : (
           <WorkFormPanel
             busy={workBusy}
             deleting={deleteBusy}
@@ -1274,10 +1364,8 @@ function AdminPage({ adminAuthenticated, authReady, onAuthChange }: AdminPagePro
             masters={overview.masters}
             onDelete={handleDelete}
             onSubmit={handleSaveWork}
-            work={selectedWork}
+            work={activePanel === 'create' ? null : selectedWork}
           />
-        ) : (
-          <MasterEditor busy={masterBusy} masters={overview.masters} onSave={handleSaveMasters} />
         )}
       </div>
     </div>
@@ -1343,7 +1431,7 @@ export default function App() {
         <Routes>
           <Route element={<AboutPage />} path="/about" />
           <Route element={<HomePage />} path="/" />
-          <Route element={<WorkDetailPage />} path="/works/:id" />
+          <Route element={<WorkDetailPage adminAuthenticated={adminAuthenticated} />} path="/works/:id" />
           <Route
             element={
               <AdminPage
