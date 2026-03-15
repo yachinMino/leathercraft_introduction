@@ -8,6 +8,7 @@ const migrationFiles = [
   new URL('../migrations/0002_admin_login_attempts.sql', import.meta.url),
   new URL('../migrations/0003_work_listing_url.sql', import.meta.url),
   new URL('../migrations/0004_admin_sessions.sql', import.meta.url),
+  new URL('../migrations/0005_work_description.sql', import.meta.url),
 ]
 
 interface StoredObject {

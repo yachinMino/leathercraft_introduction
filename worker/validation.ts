@@ -11,7 +11,7 @@ import {
 import type { MasterCatalog, ReactionType, WorkInput } from '../shared/types'
 
 const textField = z.string().trim().min(1).max(100)
-const notesField = z.string().trim().max(4000)
+const longTextField = z.string().trim().max(4000)
 const listingUrlField = z
   .string()
   .trim()
@@ -36,7 +36,8 @@ const workSchema = z.object({
   threadColor: textField,
   tanningMethod: textField,
   listingUrl: listingUrlField,
-  notes: notesField,
+  description: longTextField,
+  notes: longTextField,
   edgeFinishes: z.array(textField).max(20),
 })
 
@@ -155,6 +156,7 @@ export async function parseWorkFormData(formData: FormData): Promise<{
     threadColor: formData.get('threadColor') ?? '',
     tanningMethod: formData.get('tanningMethod') ?? '',
     listingUrl: formData.get('listingUrl') ?? '',
+    description: formData.get('description') ?? '',
     notes: formData.get('notes') ?? '',
     edgeFinishes: formData.getAll('edgeFinishes').map((value) => String(value)),
   })
@@ -162,6 +164,7 @@ export async function parseWorkFormData(formData: FormData): Promise<{
   return {
     input: {
       ...input,
+      description: input.description ?? '',
       notes: input.notes ?? '',
       edgeFinishes: uniqueOptions(normalizeOptions(input.edgeFinishes)),
     },

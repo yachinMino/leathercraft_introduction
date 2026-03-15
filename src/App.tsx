@@ -83,6 +83,7 @@ function createWorkDraft(masters: MasterCatalog, work: WorkDetail | null) {
     threadColor: work?.threadColor ?? resolvedCatalog.threadColor[0] ?? '',
     tanningMethod: work?.tanningMethod ?? resolvedCatalog.tanningMethod[0] ?? '',
     listingUrl: work?.listingUrl ?? '',
+    description: work?.description ?? '',
     notes: work?.notes ?? '',
     edgeFinishes: work?.edgeFinishes ?? [],
   }
@@ -301,18 +302,16 @@ export function WorkCardList({ works }: { works: WorkCard[] }) {
           <div className="work-card__body">
             <div className="work-card__heading">
               <h2>{work.title}</h2>
-              <span>{formatDate(work.updatedAt)}</span>
+              <div className="work-card__meta">
+                <span>{formatDate(work.updatedAt)}</span>
+                <Link className="work-card__detail-link" to={`/works/${work.id}`}>
+                  詳細
+                </Link>
+              </div>
             </div>
-            <div className="tag-list">
-              <span>{work.leatherColor}</span>
-              <span>{work.grain}</span>
-              <span>{work.threadColor}</span>
-              <span>{work.tanningMethod}</span>
-            </div>
-            {work.edgeFinishes.length > 0 ? (
-              <p className="work-card__notes">ヘリ: {work.edgeFinishes.join(' / ')}</p>
-            ) : null}
-            {work.notes ? <p className="work-card__notes">{work.notes}</p> : null}
+            <p className="work-card__description">
+              {work.description || '説明はまだ登録されていません。'}
+            </p>
             <div className="reaction-strip">
               <span>いいね {work.reactionCounts.like}</span>
               <span>リクエスト {work.reactionCounts.request}</span>
@@ -623,7 +622,7 @@ function WorkDetailPage({ adminAuthenticated }: { adminAuthenticated: boolean })
             </div>
             <div>
               <dt>備考</dt>
-              <dd>{work.notes || '記載なし'}</dd>
+              <dd className="detail-specs__text">{work.notes || '記載なし'}</dd>
             </div>
           </dl>
 
@@ -644,6 +643,11 @@ function WorkDetailPage({ adminAuthenticated }: { adminAuthenticated: boolean })
             ))}
           </div>
         </aside>
+      </section>
+
+      <section className="detail-panel detail-description">
+        <p className="eyebrow">Description</p>
+        <p className="detail-description__body">{work.description || '記載なし'}</p>
       </section>
     </div>
   )
@@ -667,6 +671,7 @@ function WorkFormPanel({ masters, work, busy, deleting, onSubmit, onDelete }: Wo
   const [threadColor, setThreadColor] = useState(initialDraft.threadColor)
   const [tanningMethod, setTanningMethod] = useState(initialDraft.tanningMethod)
   const [listingUrl, setListingUrl] = useState(initialDraft.listingUrl)
+  const [description, setDescription] = useState(initialDraft.description)
   const [notes, setNotes] = useState(initialDraft.notes)
   const [edgeFinishes, setEdgeFinishes] = useState<string[]>(initialDraft.edgeFinishes)
   const [newImages, setNewImages] = useState<File[]>([])
@@ -735,6 +740,7 @@ function WorkFormPanel({ masters, work, busy, deleting, onSubmit, onDelete }: Wo
     formData.append('threadColor', threadColor)
     formData.append('tanningMethod', tanningMethod)
     formData.append('listingUrl', listingUrl)
+    formData.append('description', description)
     formData.append('notes', notes)
 
     for (const edgeFinish of Array.from(new Set(edgeFinishes))) {
@@ -826,7 +832,8 @@ function WorkFormPanel({ masters, work, busy, deleting, onSubmit, onDelete }: Wo
 
         <fieldset className="check-grid">
           <legend>ヘリの処理</legend>
-          {resolvedCatalog.edgeFinish.map((option) => (
+          <div className="check-grid__options">
+            {resolvedCatalog.edgeFinish.map((option) => (
             <label className="check-item" key={option}>
               <input
                 checked={edgeFinishes.includes(option)}
@@ -835,13 +842,9 @@ function WorkFormPanel({ masters, work, busy, deleting, onSubmit, onDelete }: Wo
               />
               <span>{option}</span>
             </label>
-          ))}
+            ))}
+          </div>
         </fieldset>
-
-        <label>
-          <span>備考</span>
-          <textarea onChange={(event) => setNotes(event.target.value)} rows={5} value={notes} />
-        </label>
 
         <label>
           <span>出品リンク</span>
@@ -885,7 +888,6 @@ function WorkFormPanel({ masters, work, busy, deleting, onSubmit, onDelete }: Wo
           ) : null}
 
           <label className="file-input" htmlFor={fileInputId}>
-            <span>追加する画像を選択</span>
             <input
               accept={allowedUploadImageTypes.join(',')}
               id={fileInputId}
@@ -903,6 +905,21 @@ function WorkFormPanel({ masters, work, busy, deleting, onSubmit, onDelete }: Wo
             </ul>
           ) : null}
         </div>
+
+        <label>
+          <span>説明</span>
+          <textarea onChange={(event) => setDescription(event.target.value)} rows={6} value={description} />
+        </label>
+
+        <label>
+          <span>備考</span>
+          <textarea
+            className="admin-form__textarea--compact"
+            onChange={(event) => setNotes(event.target.value)}
+            rows={1}
+            value={notes}
+          />
+        </label>
 
         {localError ? <p className="status-text status-text--error">{localError}</p> : null}
 

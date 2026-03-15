@@ -1,0 +1,2 @@
+ALTER TABLE works
+ADD COLUMN description TEXT NOT NULL DEFAULT '';

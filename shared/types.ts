@@ -13,6 +13,7 @@ export interface WorkInput {
   edgeFinishes: string[]
   tanningMethod: string
   listingUrl: string
+  description: string
   notes: string
 }
 

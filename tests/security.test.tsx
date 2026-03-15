@@ -14,6 +14,7 @@ import app from '../worker/index'
 import { createTestBindings, testAdminPassword } from './test-env'
 
 interface WorkFormOptions {
+  description?: string
   edgeFinishes?: string[]
   grain?: string
   images?: File[]
@@ -43,6 +44,7 @@ function createWorkForm(options: WorkFormOptions = {}): FormData {
   formData.append('threadColor', options.threadColor ?? '黒')
   formData.append('tanningMethod', options.tanningMethod ?? 'タンニン鞣し')
   formData.append('listingUrl', options.listingUrl ?? '')
+  formData.append('description', options.description ?? '')
   formData.append('notes', options.notes ?? '')
 
   for (const edgeFinish of options.edgeFinishes ?? ['ヘリ落とし']) {
@@ -135,6 +137,7 @@ describe('security tests', () => {
         method: 'POST',
         headers: createAdminRequestHeaders(cookie),
         body: createWorkForm({
+          description: payload,
           listingUrl: 'https://jp.mercari.com/item/m00000000000',
           notes: payload,
           title: payload,
@@ -146,12 +149,14 @@ describe('security tests', () => {
     expect(createResponse.status).toBe(201)
 
     const createdWork = (await createResponse.json()) as {
+      description: string
       listingUrl: string
       notes: string
       title: string
     }
 
     expect(createdWork.title).toBe(payload)
+    expect(createdWork.description).toBe(payload)
     expect(createdWork.notes).toBe(payload)
     expect(createdWork.listingUrl).toBe('https://jp.mercari.com/item/m00000000000')
 
@@ -161,6 +166,7 @@ describe('security tests', () => {
     expect(listResponse.status).toBe(200)
     expect(workList.works).toHaveLength(1)
     expect(workList.works[0]?.title).toBe(payload)
+    expect(workList.works[0]?.description).toBe(payload)
     expect(workList.works[0]?.listingUrl).toBe('https://jp.mercari.com/item/m00000000000')
   })
 
@@ -211,7 +217,8 @@ describe('security tests', () => {
       edgeFinishes: ['ヘリ落とし'],
       tanningMethod: 'タンニン鞣し',
       listingUrl: '',
-      notes: '<script>alert("xss")</script>',
+      description: '<script>alert("xss")</script>',
+      notes: 'not-rendered-on-list',
       coverImageUrl: null,
       createdAt: '2026-03-09T00:00:00.000Z',
       updatedAt: '2026-03-09T00:00:00.000Z',
@@ -231,6 +238,11 @@ describe('security tests', () => {
     expect(html).not.toContain('<img src=x onerror=alert(1)>')
     expect(html).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(html).toContain('詳細')
+    expect(html).not.toContain('ブラック')
+    expect(html).not.toContain('なし')
+    expect(html).not.toContain('ヘリ関係なし')
+    expect(html).not.toContain('not-rendered-on-list')
   })
 
   it('rejects invalid master selections on the server side', async () => {

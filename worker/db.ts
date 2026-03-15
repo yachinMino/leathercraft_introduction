@@ -26,6 +26,7 @@ interface WorkSummaryRow {
   thread_color: string
   tanning_method: string
   listing_url: string
+  description: string
   notes: string
   created_at: string
   updated_at: string
@@ -91,6 +92,7 @@ function rowToWorkCard(row: WorkSummaryRow, edgeFinishes: string[]): WorkCard {
     edgeFinishes,
     tanningMethod: row.tanning_method,
     listingUrl: row.listing_url,
+    description: row.description,
     notes: row.notes,
     coverImageUrl: row.cover_image_key ? buildImageUrl(row.cover_image_key) : null,
     createdAt: row.created_at,
@@ -202,6 +204,7 @@ export async function listWorks(database: D1Database): Promise<WorkCard[]> {
          w.thread_color,
          w.tanning_method,
          w.listing_url,
+         w.description,
          w.notes,
          w.created_at,
          w.updated_at,
@@ -257,6 +260,7 @@ export async function listWorksPage(
          w.thread_color,
          w.tanning_method,
          w.listing_url,
+         w.description,
          w.notes,
          w.created_at,
          w.updated_at,
@@ -308,6 +312,7 @@ export async function getWorkDetail(
          w.thread_color,
          w.tanning_method,
          w.listing_url,
+         w.description,
          w.notes,
          w.created_at,
          w.updated_at,
@@ -379,9 +384,10 @@ export async function createWorkRecord(database: D1Database, input: WorkInput): 
          thread_color,
          tanning_method,
          listing_url,
+         description,
          notes,
          updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
     )
     .bind(
       input.title,
@@ -390,6 +396,7 @@ export async function createWorkRecord(database: D1Database, input: WorkInput): 
       input.threadColor,
       input.tanningMethod,
       input.listingUrl,
+      input.description,
       input.notes,
     )
     .run()
@@ -420,6 +427,7 @@ export async function updateWorkRecord(
          thread_color = ?,
          tanning_method = ?,
          listing_url = ?,
+         description = ?,
          notes = ?,
          updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -431,6 +439,7 @@ export async function updateWorkRecord(
       input.threadColor,
       input.tanningMethod,
       input.listingUrl,
+      input.description,
       input.notes,
       workId,
     )

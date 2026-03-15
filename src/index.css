@@ -283,9 +283,8 @@ textarea:focus {
 }
 
 .work-card__heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  gap: 0.35rem;
   align-items: start;
 }
 
@@ -294,13 +293,31 @@ textarea:focus {
   font-size: 1.4rem;
 }
 
+.work-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .work-card__heading span,
+.work-card__description,
 .work-card__notes,
 .reaction-strip,
 .status-text,
 .detail-specs dt,
 .admin-sidebar__empty {
   color: var(--ink-soft);
+}
+
+.work-card__description {
+  margin: 0;
+  min-height: 3em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .tag-list {
@@ -322,6 +339,17 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
+}
+
+.work-card__detail-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-weight: 600;
+  background: var(--accent-soft);
 }
 
 .pagination {
@@ -427,6 +455,17 @@ textarea:focus {
   padding: 1.35rem;
 }
 
+.detail-description {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.detail-description__body {
+  margin: 0;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+}
+
 .about-card {
   display: grid;
   gap: 1rem;
@@ -477,8 +516,13 @@ textarea:focus {
   font-size: 1rem;
 }
 
+.detail-specs__text {
+  white-space: pre-wrap;
+}
+
 .reaction-panel {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
   margin-top: 1.4rem;
 }
@@ -623,6 +667,10 @@ textarea:focus {
   gap: 0.45rem;
 }
 
+.admin-form__textarea--compact {
+  min-height: 3.2rem;
+}
+
 .admin-form__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -641,6 +689,12 @@ textarea:focus {
 .check-grid legend {
   padding: 0 0.4rem;
   color: var(--ink-soft);
+}
+
+.check-grid__options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
 }
 
 .check-grid .check-item {
@@ -806,6 +860,10 @@ textarea:focus {
 
   .admin-form__grid {
     grid-template-columns: 1fr;
+  }
+
+  .check-grid__options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .admin-form__actions {
